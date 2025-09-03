@@ -1,4 +1,8 @@
-# 🎥 WebCodecs Test Suite
+# 🧪 Web Experiments Hub
+
+A collection of modern web technology experiments and testing suites, featuring cutting-edge APIs and real-world implementations across different browsers and devices.
+
+## 🎬 Featured: WebCodecs Test Suite
 
 A comprehensive testing suite for WebCodecs API support across different browsers and devices. Test video and audio codec encoding/decoding capabilities in real-time.
 
@@ -26,6 +30,12 @@ A comprehensive testing suite for WebCodecs API support across different browser
 - **MP3** - Legacy MPEG audio
 - **FLAC** - Lossless audio compression
 - **PCM** - Uncompressed audio
+
+## 🏠 Hub Structure
+
+- **`index.html`** - Main landing page with experiment directory
+- **`webcodecs-test.html`** - WebCodecs API testing suite
+- **Future experiments** - More cutting-edge web API tests coming soon
 
 ## 🖥️ Quick Start
 
@@ -169,9 +179,10 @@ For comprehensive mobile testing:
 ### File Structure
 ```
 webroot/
-├── index.html          # Main test interface
-├── styles.css          # UI styling  
-├── webcodecs-test.js   # Test logic and WebCodecs integration
+├── index.html          # Main experiments hub landing page
+├── webcodecs-test.html # WebCodecs API testing interface
+├── styles.css          # UI styling (shared across experiments)
+├── webcodecs-test.js   # WebCodecs test logic and integration
 ├── server.js           # Node.js HTTP server
 ├── server.py           # Python HTTP server
 ├── package.json        # Node.js dependencies

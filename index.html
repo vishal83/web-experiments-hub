@@ -3,90 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebCodecs Support Test</title>
+    <title>Web Experiments Hub</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional styles for the landing page */
+        .experiment-grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            margin-top: 2rem;
+        }
+        
+        .experiment-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .experiment-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(31, 38, 135, 0.5);
+        }
+        
+        .experiment-card h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-size: 1.4rem;
+        }
+        
+        .experiment-card .description {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .experiment-card .tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tag {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .experiment-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .experiment-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-ready {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-beta {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .status-planning {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .experiment-card {
+            position: relative;
+        }
+        
+        .hero-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .hero-section h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero-section p {
+            font-size: 1.2rem;
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .github-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.8rem;
+            border-radius: 50%;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .github-link:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 1);
+        }
+    </style>
 </head>
 <body>
+    <a href="https://github.com" class="github-link" title="View on GitHub">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/>
+        </svg>
+    </a>
+
     <div class="container">
-        <header>
-            <h1>🎥 WebCodecs Support Test</h1>
-            <p>Test video and audio codec support in your browser using the WebCodecs API</p>
-        </header>
+        <div class="hero-section">
+            <h1>🧪 Web Experiments Hub</h1>
+            <p>
+                A collection of modern web technology experiments, testing cutting-edge APIs 
+                and demonstrating real-world implementations across different browsers and devices.
+            </p>
+        </div>
 
-        <div class="info-section">
-            <h2>Browser Information</h2>
-            <div id="browser-info" class="info-grid">
-                <div class="info-item">
-                    <label>User Agent:</label>
-                    <span id="user-agent"></span>
+        <div class="experiment-grid">
+            <!-- WebCodecs Test Suite -->
+            <div class="experiment-card">
+                <div class="status-badge status-ready">Production Ready</div>
+                <h3>🎬 WebCodecs API Test Suite</h3>
+                <div class="description">
+                    Comprehensive testing platform for the WebCodecs API. Test video and audio codec 
+                    support, perform real-time encoding from camera/microphone streams, and validate 
+                    complete encode→decode pipelines across different browsers.
                 </div>
-                <div class="info-item">
-                    <label>WebCodecs Support:</label>
-                    <span id="webcodecs-support" class="status unknown">Checking...</span>
+                <div class="tags">
+                    <span class="tag">WebCodecs</span>
+                    <span class="tag">Video Encoding</span>
+                    <span class="tag">Audio Processing</span>
+                    <span class="tag">Real-time</span>
+                    <span class="tag">Cross-browser</span>
                 </div>
+                <a href="webcodecs-test.html" class="experiment-link">Launch WebCodecs Tests</a>
+            </div>
+
+            <!-- Future Experiment Placeholder -->
+            <div class="experiment-card">
+                <div class="status-badge status-planning">Planning</div>
+                <h3>🌐 WebRTC Data Channels</h3>
+                <div class="description">
+                    Test WebRTC data channel functionality including peer-to-peer communication, 
+                    file transfer capabilities, and real-time messaging across different network 
+                    configurations and browsers.
+                </div>
+                <div class="tags">
+                    <span class="tag">WebRTC</span>
+                    <span class="tag">P2P</span>
+                    <span class="tag">File Transfer</span>
+                    <span class="tag">Networking</span>
+                </div>
+                <a href="#" class="experiment-link" style="opacity: 0.6; cursor: not-allowed;">Coming Soon</a>
+            </div>
+
+            <!-- Future Experiment Placeholder -->
+            <div class="experiment-card">
+                <div class="status-badge status-planning">Planning</div>
+                <h3>🎮 WebGPU Compute Shaders</h3>
+                <div class="description">
+                    Explore WebGPU's compute shader capabilities for parallel processing tasks. 
+                    Test performance across different GPU architectures and compare with CPU-based 
+                    implementations for various computational workloads.
+                </div>
+                <div class="tags">
+                    <span class="tag">WebGPU</span>
+                    <span class="tag">Compute</span>
+                    <span class="tag">Parallel Processing</span>
+                    <span class="tag">Performance</span>
+                </div>
+                <a href="#" class="experiment-link" style="opacity: 0.6; cursor: not-allowed;">Coming Soon</a>
+            </div>
+
+            <!-- Future Experiment Placeholder -->
+            <div class="experiment-card">
+                <div class="status-badge status-planning">Planning</div>
+                <h3>📡 Web Serial & USB APIs</h3>
+                <div class="description">
+                    Test the Web Serial API and WebUSB API for communicating with hardware devices. 
+                    Includes examples for Arduino communication, sensor data collection, and 
+                    device control through web applications.
+                </div>
+                <div class="tags">
+                    <span class="tag">Web Serial</span>
+                    <span class="tag">WebUSB</span>
+                    <span class="tag">Hardware</span>
+                    <span class="tag">IoT</span>
+                </div>
+                <a href="#" class="experiment-link" style="opacity: 0.6; cursor: not-allowed;">Coming Soon</a>
+            </div>
+
+            <!-- Future Experiment Placeholder -->
+            <div class="experiment-card">
+                <div class="status-badge status-planning">Planning</div>
+                <h3>🔊 Web Audio Worklets</h3>
+                <div class="description">
+                    Advanced audio processing using Web Audio API worklets. Real-time audio effects, 
+                    custom synthesizers, and audio visualization with performance monitoring across 
+                    different audio contexts and sample rates.
+                </div>
+                <div class="tags">
+                    <span class="tag">Web Audio</span>
+                    <span class="tag">Worklets</span>
+                    <span class="tag">DSP</span>
+                    <span class="tag">Real-time</span>
+                </div>
+                <a href="#" class="experiment-link" style="opacity: 0.6; cursor: not-allowed;">Coming Soon</a>
+            </div>
+
+            <!-- Future Experiment Placeholder -->
+            <div class="experiment-card">
+                <div class="status-badge status-planning">Planning</div>
+                <h3>🖼️ Canvas 2D & OffscreenCanvas</h3>
+                <div class="description">
+                    Performance testing and feature validation for Canvas 2D API and OffscreenCanvas. 
+                    Compare rendering performance, test worker-based drawing, and validate 
+                    cross-browser compatibility for graphics operations.
+                </div>
+                <div class="tags">
+                    <span class="tag">Canvas 2D</span>
+                    <span class="tag">OffscreenCanvas</span>
+                    <span class="tag">Graphics</span>
+                    <span class="tag">Performance</span>
+                </div>
+                <a href="#" class="experiment-link" style="opacity: 0.6; cursor: not-allowed;">Coming Soon</a>
             </div>
         </div>
 
-        <div class="test-section">
-            <h2>🎬 Video Codec Support</h2>
-            <div class="controls">
-                <button id="test-video-codecs" class="btn primary">Test Video Codecs</button>
-                <button id="test-video-encoding" class="btn secondary" disabled>Test Video Encoding</button>
-            </div>
-            <div id="video-results" class="results-grid">
-                <!-- Video codec results will be populated here -->
-            </div>
-        </div>
-
-        <div class="test-section">
-            <h2>🎵 Audio Codec Support</h2>
-            <div class="controls">
-                <button id="test-audio-codecs" class="btn primary">Test Audio Codecs</button>
-                <button id="test-audio-encoding" class="btn secondary" disabled>Test Audio Encoding</button>
-            </div>
-            <div id="audio-results" class="results-grid">
-                <!-- Audio codec results will be populated here -->
-            </div>
-        </div>
-
-        <div class="test-section">
-            <h2>🔄 Encode → Decode Roundtrip Tests</h2>
-            <div class="controls">
-                <button id="test-video-roundtrip" class="btn primary" disabled>Test Video Roundtrip</button>
-                <button id="test-audio-roundtrip" class="btn primary" disabled>Test Audio Roundtrip</button>
-            </div>
-            <div id="roundtrip-results" class="results-grid">
-                <!-- Roundtrip test results will be populated here -->
-            </div>
-        </div>
-
-        <div class="test-section">
-            <h2>🧪 Live Encoding Tests</h2>
-            <div class="controls">
-                <button id="start-camera-test" class="btn primary">Test Camera → WebCodecs</button>
-                <button id="start-microphone-test" class="btn primary">Test Microphone → WebCodecs</button>
-            </div>
-            <div class="live-test-area">
-                <video id="source-video" autoplay muted playsinline style="display: none;"></video>
-                <canvas id="test-canvas" width="320" height="240" style="display: none;"></canvas>
-                <div id="live-test-status"></div>
-                <div id="encoding-stats"></div>
-            </div>
-        </div>
-
-        <div class="test-section">
-            <h2>📊 Test Results Summary</h2>
-            <div id="summary-results">
-                <p>Run tests to see results...</p>
-            </div>
-        </div>
-
-        <footer>
-            <p>Test your browser's WebCodecs API support across different devices and browsers.</p>
-            <p>Make sure to serve this over HTTPS for full functionality on remote devices.</p>
+        <footer style="margin-top: 4rem; text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.8);">
+            <p>🔬 Exploring the cutting edge of web technology</p>
+            <p>Test these experiments across different browsers and devices for comprehensive compatibility insights</p>
         </footer>
     </div>
 
-    <script src="webcodecs-test.js"></script>
+    <script>
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.experiment-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-8px) rotateX(5deg)';
+                });
+                
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0) rotateX(0)';
+                });
+            });
+
+            // Add click analytics or tracking here if needed
+            const links = document.querySelectorAll('.experiment-link[href*="html"]');
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    console.log(`Navigating to experiment: ${link.href}`);
+                    // Add analytics tracking here
+                });
+            });
+        });
+    </script>
 </body>
 </html>
