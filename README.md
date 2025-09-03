@@ -2,6 +2,12 @@
 
 A professional platform for testing modern web technologies and APIs across different browsers and devices. This hub provides a centralized location for experimenting with cutting-edge web standards and documenting browser compatibility.
 
+## 🌐 **Live Demo**
+
+**🚀 Try it now:** [https://vishal83.github.io/web-experiments-hub/](https://vishal83.github.io/web-experiments-hub/)
+
+No installation required! Access the complete Web Experiments Hub directly from your browser with HTTPS support for all advanced web APIs.
+
 ## 🎯 Purpose
 
 This repository serves as a **testing laboratory** for modern web APIs, allowing developers to:
@@ -273,6 +279,7 @@ MIT License - Feel free to use and modify for your testing needs.
 Created as a comprehensive platform for testing modern web APIs across different browsers and devices. The hub demonstrates real-world implementations and provides valuable compatibility insights for the web development community.
 
 **🔗 Repository**: https://github.com/vishal83/web-experiments-hub  
+**🌐 Live Demo**: https://vishal83.github.io/web-experiments-hub/  
 **👨‍💻 Author**: Vishal Gupta ([@vishal83](https://github.com/vishal83))  
 **🎯 Purpose**: Advancing web technology adoption through comprehensive testing
 
