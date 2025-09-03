@@ -55,6 +55,11 @@ const server = http.createServer((req, res) => {
     const urlParts = filePath.split('?');
     filePath = urlParts[0];
     
+    // Handle directory requests by serving index.html from within the directory
+    if (filePath.endsWith('/')) {
+        filePath += 'index.html';
+    }
+    
     // Security: prevent directory traversal
     if (filePath.includes('..')) {
         res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -69,22 +74,77 @@ const server = http.createServer((req, res) => {
     // Check if file exists
     fs.access(fullPath, fs.constants.F_OK, (err) => {
         if (err) {
-            // File not found
-            res.writeHead(404, { 'Content-Type': 'text/html' });
-            res.end(`
-                <!DOCTYPE html>
-                <html>
-                <head><title>404 - File Not Found</title></head>
-                <body>
-                    <h1>404 - File Not Found</h1>
-                    <p>The requested file <code>${filePath}</code> was not found.</p>
-                    <p><a href="/">Go back to WebCodecs Test</a></p>
-                </body>
-                </html>
-            `);
-            logRequest(req, 404);
+            // If direct file doesn't exist, check if it's a directory and try index.html
+            const directoryPath = path.join(__dirname, req.url);
+            
+            fs.stat(directoryPath, (statErr, stats) => {
+                if (!statErr && stats.isDirectory()) {
+                    // It's a directory, serve index.html from it
+                    const indexPath = path.join(directoryPath, 'index.html');
+                    
+                    fs.access(indexPath, fs.constants.F_OK, (indexErr) => {
+                        if (!indexErr) {
+                            serveFile(indexPath, res, req);
+                            return;
+                        }
+                        
+                        // Directory exists but no index.html
+                        res.writeHead(404, { 'Content-Type': 'text/html' });
+                        res.end(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head><title>404 - No Index File</title></head>
+                            <body>
+                                <h1>404 - No Index File</h1>
+                                <p>Directory exists but no index.html found in <code>${req.url}</code>.</p>
+                                <p><a href="/">Go back to Experiments Hub</a></p>
+                            </body>
+                            </html>
+                        `);
+                        logRequest(req, 404);
+                    });
+                } else {
+                    // File/directory not found
+                    res.writeHead(404, { 'Content-Type': 'text/html' });
+                    res.end(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head><title>404 - File Not Found</title></head>
+                        <body>
+                            <h1>404 - File Not Found</h1>
+                            <p>The requested file <code>${filePath}</code> was not found.</p>
+                            <p><a href="/">Go back to Experiments Hub</a></p>
+                        </body>
+                        </html>
+                    `);
+                    logRequest(req, 404);
+                }
+            });
             return;
         }
+
+        // Check if the found path is a directory
+        fs.stat(fullPath, (statErr, stats) => {
+            if (statErr) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Internal Server Error');
+                logRequest(req, 500);
+                return;
+            }
+            
+            if (stats.isDirectory()) {
+                // It's a directory, serve index.html from it
+                const indexPath = path.join(fullPath, 'index.html');
+                serveFile(indexPath, res, req);
+            } else {
+                // It's a file, serve it directly
+                serveFile(fullPath, res, req);
+            }
+        });
+    });
+});
+
+function serveFile(fullPath, res, req) {
 
         // Read and serve the file
         fs.readFile(fullPath, (err, data) => {
@@ -111,8 +171,7 @@ const server = http.createServer((req, res) => {
             res.end(data);
             logRequest(req, 200);
         });
-    });
-});
+}
 
 // Get port from environment or use default
 const PORT = process.env.PORT || 8000;
