@@ -42,6 +42,8 @@ class WebCodecsTestSuite {
         document.getElementById('test-audio-codecs').addEventListener('click', () => this.testAudioCodecs());
         document.getElementById('test-video-encoding').addEventListener('click', () => this.testVideoEncoding());
         document.getElementById('test-audio-encoding').addEventListener('click', () => this.testAudioEncoding());
+        document.getElementById('test-video-roundtrip').addEventListener('click', () => this.testVideoRoundtrip());
+        document.getElementById('test-audio-roundtrip').addEventListener('click', () => this.testAudioRoundtrip());
         document.getElementById('start-camera-test').addEventListener('click', () => this.startCameraTest());
         document.getElementById('start-microphone-test').addEventListener('click', () => this.startMicrophoneTest());
     }
@@ -57,6 +59,10 @@ class WebCodecsTestSuite {
             // Enable encoding test buttons
             document.getElementById('test-video-encoding').disabled = false;
             document.getElementById('test-audio-encoding').disabled = false;
+            
+            // Enable roundtrip test buttons
+            document.getElementById('test-video-roundtrip').disabled = false;
+            document.getElementById('test-audio-roundtrip').disabled = false;
         } else {
             supportElement.textContent = 'Not Supported';
             supportElement.className = 'status not-supported';
@@ -105,14 +111,17 @@ class WebCodecsTestSuite {
             });
 
         } catch (error) {
+            const errorType = this.classifyWebCodecsError(error);
             this.testResults.video[codecInfo.name] = { 
                 supported: false, 
                 error: error.message,
+                errorType: errorType,
                 codec: codecInfo.codec 
             };
             
             this.updateResultDiv(resultDiv, codecInfo.name, false, {
-                error: error.message.substring(0, 100)
+                error: error.message.substring(0, 100),
+                errorType: errorType
             });
         }
     }
@@ -445,7 +454,7 @@ class WebCodecsTestSuite {
             }
 
             const audioFrame = new AudioData({
-                format: 'f32-planar',
+                format: 'f32',  // Fixed: Use interleaved format for interleaved data
                 sampleRate: sampleRate,
                 numberOfChannels: channels,
                 numberOfFrames: frameSize,
@@ -460,40 +469,609 @@ class WebCodecsTestSuite {
 
     async startCameraTest() {
         try {
+            // Find a supported video codec
+            const supportedCodec = Object.entries(this.testResults.video)
+                .find(([_, result]) => result.supported && result.encoder);
+            
+            if (!supportedCodec) {
+                document.getElementById('live-test-status').innerHTML = 
+                    '❌ No supported video codecs found. Run codec tests first.';
+                return;
+            }
+
+            const codecInfo = this.videoCodecs.find(c => c.name === supportedCodec[0]);
+            
+            // Get camera access
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 640, height: 480 } 
+                video: { 
+                    width: { ideal: 640 }, 
+                    height: { ideal: 480 },
+                    frameRate: { ideal: 30 }
+                } 
             });
             
             const video = document.getElementById('source-video');
             video.srcObject = stream;
             video.style.display = 'block';
+            await video.play();
             
             document.getElementById('live-test-status').innerHTML = 
-                '📹 Camera access granted. Video stream active.';
-            
-            // You can extend this to encode frames from the video stream
+                `📹 Camera active, starting encoding with ${codecInfo.name}...`;
+
+            // Start the encoding pipeline
+            await this.encodeCameraStream(stream, codecInfo.codec, codecInfo.name);
             
         } catch (error) {
+            console.error('Camera test error:', error);
             document.getElementById('live-test-status').innerHTML = 
-                `❌ Camera access failed: ${error.message}`;
+                `❌ Camera test failed: ${error.message}`;
+        }
+    }
+
+    async encodeCameraStream(stream, codec, codecName) {
+        let encoder = null;
+        let processor = null;
+        let reader = null;
+        let frameCount = 0;
+        let totalBytes = 0;
+        let isEncoding = true;
+        const startTime = performance.now();
+
+        try {
+            const videoTrack = stream.getVideoTracks()[0];
+            const settings = videoTrack.getSettings();
+            
+            // Create encoder
+            encoder = new VideoEncoder({
+                output: (chunk) => {
+                    frameCount++;
+                    totalBytes += chunk.byteLength;
+                    const elapsed = (performance.now() - startTime) / 1000;
+                    const fps = (frameCount / elapsed).toFixed(1);
+                    const kbps = ((totalBytes * 8) / elapsed / 1000).toFixed(1);
+                    
+                    document.getElementById('encoding-stats').innerHTML = `
+                        <strong>🎬 Live Camera Encoding (${codecName})</strong><br>
+                        Frames encoded: ${frameCount}<br>
+                        Encoding FPS: ${fps}<br>
+                        Bitrate: ${kbps} kbps<br>
+                        Total data: ${(totalBytes / 1024).toFixed(1)} KB<br>
+                        Chunk size: ${chunk.byteLength} bytes<br>
+                        Resolution: ${settings.width}×${settings.height}
+                    `;
+                },
+                error: (error) => {
+                    console.error('Camera encoding error:', error);
+                    document.getElementById('live-test-status').innerHTML = 
+                        `❌ Encoding error: ${error.message}`;
+                    isEncoding = false;
+                }
+            });
+
+            encoder.configure({
+                codec: codec,
+                width: settings.width || 640,
+                height: settings.height || 480,
+                bitrate: 1000000,
+                framerate: 30,
+                keyFrameInterval: 60
+            });
+
+            // Use MediaStreamTrackProcessor if available (Chrome 94+)
+            if ('MediaStreamTrackProcessor' in window) {
+                processor = new MediaStreamTrackProcessor({ track: videoTrack });
+                reader = processor.readable.getReader();
+
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Camera encoding active with MediaStreamTrackProcessor`;
+
+                // Process frames
+                while (isEncoding) {
+                    const { done, value: frame } = await reader.read();
+                    if (done || !isEncoding) break;
+
+                    try {
+                        encoder.encode(frame, { keyFrame: frameCount % 60 === 0 });
+                        frame.close();
+                        
+                        // Stop after 10 seconds or 300 frames for demo
+                        if (frameCount >= 300) {
+                            isEncoding = false;
+                        }
+                    } catch (error) {
+                        console.error('Frame encoding error:', error);
+                        frame.close();
+                    }
+                }
+            } else {
+                // Fallback: Use video element and canvas
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Camera encoding active (canvas fallback)`;
+
+                const canvas = document.getElementById('test-canvas');
+                canvas.width = settings.width || 640;
+                canvas.height = settings.height || 480;
+                canvas.style.display = 'block';
+                const ctx = canvas.getContext('2d');
+                
+                const video = document.getElementById('source-video');
+                
+                const encodeFromCanvas = () => {
+                    if (!isEncoding || frameCount >= 300) return;
+                    
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const frame = new VideoFrame(canvas, {
+                        timestamp: performance.now() * 1000
+                    });
+                    
+                    encoder.encode(frame, { keyFrame: frameCount % 60 === 0 });
+                    frame.close();
+                    
+                    setTimeout(encodeFromCanvas, 33); // ~30fps
+                };
+                
+                encodeFromCanvas();
+            }
+
+            // Cleanup after encoding finishes
+            setTimeout(() => {
+                isEncoding = false;
+                if (encoder) encoder.close();
+                if (reader) reader.releaseLock();
+                if (processor) processor.readable.cancel();
+                
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('source-video').style.display = 'none';
+                document.getElementById('test-canvas').style.display = 'none';
+                
+                const finalFps = (frameCount / ((performance.now() - startTime) / 1000)).toFixed(1);
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Camera encoding completed. Average FPS: ${finalFps}`;
+            }, 10000); // Stop after 10 seconds
+
+        } catch (error) {
+            console.error('Camera encoding setup error:', error);
+            document.getElementById('live-test-status').innerHTML = 
+                `❌ Camera encoding setup failed: ${error.message}`;
         }
     }
 
     async startMicrophoneTest() {
         try {
+            // Find a supported audio codec
+            const supportedCodec = Object.entries(this.testResults.audio)
+                .find(([_, result]) => result.supported && result.encoder);
+            
+            if (!supportedCodec) {
+                document.getElementById('live-test-status').innerHTML = 
+                    '❌ No supported audio codecs found. Run codec tests first.';
+                return;
+            }
+
+            const codecInfo = this.audioCodecs.find(c => c.name === supportedCodec[0]);
+            
+            // Get microphone access
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { sampleRate: 48000, channelCount: 2 } 
+                audio: { 
+                    sampleRate: 48000, 
+                    channelCount: 2,
+                    echoCancellation: false,
+                    noiseSuppression: false
+                } 
             });
             
             document.getElementById('live-test-status').innerHTML = 
-                '🎤 Microphone access granted. Audio stream active.';
-            
-            // You can extend this to capture and encode audio from the stream
+                `🎤 Microphone active, starting encoding with ${codecInfo.name}...`;
+
+            // Start the encoding pipeline
+            await this.encodeMicrophoneStream(stream, codecInfo.codec, codecInfo.name);
             
         } catch (error) {
+            console.error('Microphone test error:', error);
             document.getElementById('live-test-status').innerHTML = 
-                `❌ Microphone access failed: ${error.message}`;
+                `❌ Microphone test failed: ${error.message}`;
         }
+    }
+
+    async encodeMicrophoneStream(stream, codec, codecName) {
+        let encoder = null;
+        let processor = null;
+        let reader = null;
+        let chunkCount = 0;
+        let totalBytes = 0;
+        let isEncoding = true;
+        const startTime = performance.now();
+        const audioContext = new AudioContext();
+
+        try {
+            const audioTrack = stream.getAudioTracks()[0];
+            const settings = audioTrack.getSettings();
+            
+            // Create encoder
+            encoder = new AudioEncoder({
+                output: (chunk) => {
+                    chunkCount++;
+                    totalBytes += chunk.byteLength;
+                    const elapsed = (performance.now() - startTime) / 1000;
+                    const chunksPerSec = (chunkCount / elapsed).toFixed(1);
+                    const kbps = ((totalBytes * 8) / elapsed / 1000).toFixed(1);
+                    
+                    document.getElementById('encoding-stats').innerHTML = `
+                        <strong>🎤 Live Microphone Encoding (${codecName})</strong><br>
+                        Audio chunks: ${chunkCount}<br>
+                        Chunks/sec: ${chunksPerSec}<br>
+                        Bitrate: ${kbps} kbps<br>
+                        Total data: ${(totalBytes / 1024).toFixed(1)} KB<br>
+                        Chunk size: ${chunk.byteLength} bytes<br>
+                        Sample rate: ${settings.sampleRate || 48000}Hz
+                    `;
+                },
+                error: (error) => {
+                    console.error('Microphone encoding error:', error);
+                    document.getElementById('live-test-status').innerHTML = 
+                        `❌ Encoding error: ${error.message}`;
+                    isEncoding = false;
+                }
+            });
+
+            const config = {
+                codec: codec,
+                sampleRate: settings.sampleRate || 48000,
+                numberOfChannels: 2,
+                bitrate: 128000
+            };
+
+            if (codec === 'pcm-s16') {
+                delete config.bitrate;
+            }
+
+            encoder.configure(config);
+
+            // Use MediaStreamTrackProcessor if available (Chrome 94+)
+            if ('MediaStreamTrackProcessor' in window) {
+                processor = new MediaStreamTrackProcessor({ track: audioTrack });
+                reader = processor.readable.getReader();
+
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Microphone encoding active with MediaStreamTrackProcessor`;
+
+                // Process audio frames
+                while (isEncoding) {
+                    const { done, value: audioData } = await reader.read();
+                    if (done || !isEncoding) break;
+
+                    try {
+                        encoder.encode(audioData);
+                        audioData.close();
+                        
+                        // Stop after 10 seconds or 100 chunks for demo
+                        if (chunkCount >= 100) {
+                            isEncoding = false;
+                        }
+                    } catch (error) {
+                        console.error('Audio frame encoding error:', error);
+                        audioData.close();
+                    }
+                }
+            } else {
+                // Fallback: Use Web Audio API to capture audio data
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Microphone encoding active (Web Audio API fallback)`;
+
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 2, 2);
+                
+                processor.onaudioprocess = (event) => {
+                    if (!isEncoding || chunkCount >= 100) return;
+
+                    const inputBuffer = event.inputBuffer;
+                    const leftChannel = inputBuffer.getChannelData(0);
+                    const rightChannel = inputBuffer.getChannelData(1);
+                    
+                    // Interleave the channels
+                    const frameSize = leftChannel.length;
+                    const audioData = new Float32Array(frameSize * 2);
+                    
+                    for (let i = 0; i < frameSize; i++) {
+                        audioData[i * 2] = leftChannel[i];
+                        audioData[i * 2 + 1] = rightChannel[i];
+                    }
+
+                    try {
+                        const audioFrame = new AudioData({
+                            format: 'f32',
+                            sampleRate: audioContext.sampleRate,
+                            numberOfChannels: 2,
+                            numberOfFrames: frameSize,
+                            timestamp: performance.now() * 1000,
+                            data: audioData
+                        });
+
+                        encoder.encode(audioFrame);
+                        audioFrame.close();
+                    } catch (error) {
+                        console.error('Audio encoding error:', error);
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+            }
+
+            // Cleanup after encoding finishes
+            setTimeout(() => {
+                isEncoding = false;
+                if (encoder) encoder.close();
+                if (reader) reader.releaseLock();
+                if (processor) processor.readable?.cancel();
+                if (audioContext.state !== 'closed') audioContext.close();
+                
+                stream.getTracks().forEach(track => track.stop());
+                
+                const avgChunksPerSec = (chunkCount / ((performance.now() - startTime) / 1000)).toFixed(1);
+                document.getElementById('live-test-status').innerHTML = 
+                    `✅ Microphone encoding completed. Avg chunks/sec: ${avgChunksPerSec}`;
+            }, 10000); // Stop after 10 seconds
+
+        } catch (error) {
+            console.error('Microphone encoding setup error:', error);
+            document.getElementById('live-test-status').innerHTML = 
+                `❌ Microphone encoding setup failed: ${error.message}`;
+        }
+    }
+
+    async testVideoRoundtrip() {
+        this.updateButton('test-video-roundtrip', 'Testing...', true);
+        const resultsContainer = document.getElementById('roundtrip-results');
+        
+        try {
+            // Find supported codecs
+            const supportedCodecs = Object.entries(this.testResults.video)
+                .filter(([_, result]) => result.supported)
+                .slice(0, 3); // Test first 3 supported codecs
+            
+            if (supportedCodecs.length === 0) {
+                alert('No supported video codecs found. Run codec tests first.');
+                return;
+            }
+
+            resultsContainer.innerHTML = '<p>Running video roundtrip tests...</p>';
+
+            for (const [codecName, codecResult] of supportedCodecs) {
+                await this.performVideoRoundtripTest(codecName, codecResult.codec, resultsContainer);
+            }
+
+        } catch (error) {
+            console.error('Video roundtrip test failed:', error);
+            resultsContainer.innerHTML = `<p class="error">❌ Roundtrip test failed: ${error.message}</p>`;
+        } finally {
+            this.updateButton('test-video-roundtrip', 'Test Video Roundtrip', false);
+        }
+    }
+
+    async testAudioRoundtrip() {
+        this.updateButton('test-audio-roundtrip', 'Testing...', true);
+        const resultsContainer = document.getElementById('roundtrip-results');
+        
+        try {
+            // Find supported codecs
+            const supportedCodecs = Object.entries(this.testResults.audio)
+                .filter(([_, result]) => result.supported)
+                .slice(0, 3); // Test first 3 supported codecs
+            
+            if (supportedCodecs.length === 0) {
+                alert('No supported audio codecs found. Run codec tests first.');
+                return;
+            }
+
+            if (resultsContainer.innerHTML.includes('Running video roundtrip')) {
+                // Append to existing results
+            } else {
+                resultsContainer.innerHTML = '<p>Running audio roundtrip tests...</p>';
+            }
+
+            for (const [codecName, codecResult] of supportedCodecs) {
+                await this.performAudioRoundtripTest(codecName, codecResult.codec, resultsContainer);
+            }
+
+        } catch (error) {
+            console.error('Audio roundtrip test failed:', error);
+            resultsContainer.innerHTML += `<p class="error">❌ Audio roundtrip test failed: ${error.message}</p>`;
+        } finally {
+            this.updateButton('test-audio-roundtrip', 'Test Audio Roundtrip', false);
+        }
+    }
+
+    async performVideoRoundtripTest(codecName, codec, container) {
+        return new Promise(async (resolve, reject) => {
+            let encodedChunks = [];
+            let decodedFrames = [];
+            let encoder = null;
+            let decoder = null;
+            
+            const resultDiv = this.createResultDiv(`${codecName} Roundtrip`, 'testing');
+            container.appendChild(resultDiv);
+
+            try {
+                // Create test canvas and pattern
+                const canvas = document.createElement('canvas');
+                canvas.width = 320;
+                canvas.height = 240;
+                const ctx = canvas.getContext('2d');
+                this.drawTestPattern(ctx, canvas.width, canvas.height, 0);
+
+                // Configure encoder
+                encoder = new VideoEncoder({
+                    output: (chunk) => {
+                        encodedChunks.push(chunk);
+                        // Start decoding after we have some chunks
+                        if (encodedChunks.length === 1 && !decoder) {
+                            setupDecoder();
+                        }
+                    },
+                    error: (error) => reject(error)
+                });
+
+                const setupDecoder = () => {
+                    decoder = new VideoDecoder({
+                        output: (frame) => {
+                            decodedFrames.push(frame);
+                            if (decodedFrames.length >= 3) {
+                                // Test passed - we encoded and decoded frames
+                                this.updateResultDiv(resultDiv, `${codecName} Roundtrip`, true, {
+                                    'Encoded chunks': encodedChunks.length,
+                                    'Decoded frames': decodedFrames.length,
+                                    'Total size': `${encodedChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)} bytes`
+                                });
+                                
+                                // Cleanup
+                                decodedFrames.forEach(f => f.close());
+                                encoder.close();
+                                decoder.close();
+                                resolve();
+                            }
+                        },
+                        error: (error) => reject(error)
+                    });
+
+                    decoder.configure({ codec: codec });
+                    
+                    // Decode the chunks
+                    encodedChunks.forEach(chunk => {
+                        decoder.decode(chunk);
+                    });
+                };
+
+                encoder.configure({
+                    codec: codec,
+                    width: canvas.width,
+                    height: canvas.height,
+                    bitrate: 500000,
+                    framerate: 30
+                });
+
+                // Encode a few test frames
+                for (let i = 0; i < 5; i++) {
+                    this.drawTestPattern(ctx, canvas.width, canvas.height, i);
+                    const frame = new VideoFrame(canvas, {
+                        timestamp: i * 33333
+                    });
+                    encoder.encode(frame, { keyFrame: i === 0 });
+                    frame.close();
+                }
+
+                encoder.flush();
+
+            } catch (error) {
+                this.updateResultDiv(resultDiv, `${codecName} Roundtrip`, false, {
+                    error: error.message
+                });
+                reject(error);
+            }
+        });
+    }
+
+    async performAudioRoundtripTest(codecName, codec, container) {
+        return new Promise(async (resolve, reject) => {
+            let encodedChunks = [];
+            let decodedFrames = [];
+            let encoder = null;
+            let decoder = null;
+            
+            const resultDiv = this.createResultDiv(`${codecName} Audio Roundtrip`, 'testing');
+            container.appendChild(resultDiv);
+
+            try {
+                // Configure encoder
+                encoder = new AudioEncoder({
+                    output: (chunk) => {
+                        encodedChunks.push(chunk);
+                        // Start decoding after first chunk
+                        if (encodedChunks.length === 1 && !decoder) {
+                            setupDecoder();
+                        }
+                    },
+                    error: (error) => reject(error)
+                });
+
+                const setupDecoder = () => {
+                    decoder = new AudioDecoder({
+                        output: (audioData) => {
+                            decodedFrames.push(audioData);
+                            if (decodedFrames.length >= 2) {
+                                // Test passed
+                                this.updateResultDiv(resultDiv, `${codecName} Audio Roundtrip`, true, {
+                                    'Encoded chunks': encodedChunks.length,
+                                    'Decoded frames': decodedFrames.length,
+                                    'Sample rate': `${decodedFrames[0].sampleRate}Hz`,
+                                    'Channels': decodedFrames[0].numberOfChannels
+                                });
+                                
+                                // Cleanup
+                                decodedFrames.forEach(f => f.close());
+                                encoder.close();
+                                decoder.close();
+                                resolve();
+                            }
+                        },
+                        error: (error) => reject(error)
+                    });
+
+                    decoder.configure({ codec: codec });
+                    
+                    // Decode the chunks
+                    encodedChunks.forEach(chunk => {
+                        decoder.decode(chunk);
+                    });
+                };
+
+                const config = {
+                    codec: codec,
+                    sampleRate: 48000,
+                    numberOfChannels: 2,
+                    bitrate: 128000
+                };
+
+                if (codec === 'pcm-s16') {
+                    delete config.bitrate;
+                }
+
+                encoder.configure(config);
+
+                // Generate and encode test audio
+                for (let i = 0; i < 3; i++) {
+                    const frameSize = 1024;
+                    const audioData = new Float32Array(frameSize * 2);
+                    
+                    for (let j = 0; j < frameSize; j++) {
+                        const sample = Math.sin(2 * Math.PI * 440 * (i * frameSize + j) / 48000);
+                        audioData[j * 2] = sample;
+                        audioData[j * 2 + 1] = sample;
+                    }
+
+                    const audioFrame = new AudioData({
+                        format: 'f32',
+                        sampleRate: 48000,
+                        numberOfChannels: 2,
+                        numberOfFrames: frameSize,
+                        timestamp: i * frameSize * 1000000 / 48000,
+                        data: audioData
+                    });
+
+                    encoder.encode(audioFrame);
+                    audioFrame.close();
+                }
+
+                encoder.flush();
+
+            } catch (error) {
+                this.updateResultDiv(resultDiv, `${codecName} Audio Roundtrip`, false, {
+                    error: error.message
+                });
+                reject(error);
+            }
+        });
     }
 
     drawTestPattern(ctx, width, height, frame = 0) {
@@ -595,6 +1173,52 @@ class WebCodecsTestSuite {
         if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
         if (ua.includes('Edg')) return 'Edge';
         return 'Unknown';
+    }
+
+    classifyWebCodecsError(error) {
+        const message = error.message.toLowerCase();
+        const name = error.name.toLowerCase();
+
+        // Hardware/driver issues
+        if (message.includes('hardware') || message.includes('driver')) {
+            return 'Hardware/Driver Issue';
+        }
+        
+        // Codec not supported
+        if (message.includes('not supported') || message.includes('unsupported') || 
+            name.includes('notsupported')) {
+            return 'Codec Not Supported';
+        }
+        
+        // Configuration issues
+        if (message.includes('invalid') || message.includes('configuration') || 
+            message.includes('bitrate') || message.includes('resolution')) {
+            return 'Configuration Error';
+        }
+        
+        // Memory/resource issues
+        if (message.includes('memory') || message.includes('resource') || 
+            message.includes('quota')) {
+            return 'Resource Limitation';
+        }
+        
+        // Permission/security issues
+        if (message.includes('permission') || message.includes('security') || 
+            message.includes('origin')) {
+            return 'Permission/Security Error';
+        }
+        
+        // Network issues
+        if (message.includes('network') || message.includes('timeout')) {
+            return 'Network Error';
+        }
+
+        // Browser feature not available
+        if (message.includes('undefined') || message.includes('not a function')) {
+            return 'API Not Available';
+        }
+
+        return 'Unknown Error';
     }
 }
 
