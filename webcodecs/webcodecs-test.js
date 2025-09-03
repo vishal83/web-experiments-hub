@@ -50,22 +50,75 @@ class WebCodecsTestSuite {
 
     checkWebCodecsSupport() {
         const supportElement = document.getElementById('webcodecs-support');
+        const videoEncoderElement = document.getElementById('video-encoder-support');
+        const videoDecoderElement = document.getElementById('video-decoder-support');
+        const audioEncoderElement = document.getElementById('audio-encoder-support');
+        const audioDecoderElement = document.getElementById('audio-decoder-support');
         
-        if ('VideoEncoder' in window && 'VideoDecoder' in window && 
-            'AudioEncoder' in window && 'AudioDecoder' in window) {
-            supportElement.textContent = 'Supported';
+        // Check individual component support
+        const videoEncoderSupported = 'VideoEncoder' in window;
+        const videoDecoderSupported = 'VideoDecoder' in window;
+        const audioEncoderSupported = 'AudioEncoder' in window;
+        const audioDecoderSupported = 'AudioDecoder' in window;
+        
+        // Update individual status indicators
+        this.updateSupportStatus(videoEncoderElement, videoEncoderSupported);
+        this.updateSupportStatus(videoDecoderElement, videoDecoderSupported);
+        this.updateSupportStatus(audioEncoderElement, audioEncoderSupported);
+        this.updateSupportStatus(audioDecoderElement, audioDecoderSupported);
+        
+        // Determine overall support
+        const fullSupport = videoEncoderSupported && videoDecoderSupported && 
+                           audioEncoderSupported && audioDecoderSupported;
+        const partialSupport = videoEncoderSupported || videoDecoderSupported || 
+                             audioEncoderSupported || audioDecoderSupported;
+        
+        // Update overall support status
+        if (fullSupport) {
+            supportElement.textContent = 'Fully Supported';
             supportElement.className = 'status supported';
             
-            // Enable encoding test buttons
+            // Enable all test buttons for full support
             document.getElementById('test-video-encoding').disabled = false;
             document.getElementById('test-audio-encoding').disabled = false;
-            
-            // Enable roundtrip test buttons
             document.getElementById('test-video-roundtrip').disabled = false;
             document.getElementById('test-audio-roundtrip').disabled = false;
+            
+        } else if (partialSupport) {
+            supportElement.textContent = 'Partially Supported';
+            supportElement.className = 'status partial';
+            
+            // Enable buttons based on what's available
+            document.getElementById('test-video-encoding').disabled = !videoEncoderSupported;
+            document.getElementById('test-audio-encoding').disabled = !audioEncoderSupported;
+            document.getElementById('test-video-roundtrip').disabled = !(videoEncoderSupported && videoDecoderSupported);
+            document.getElementById('test-audio-roundtrip').disabled = !(audioEncoderSupported && audioDecoderSupported);
+            
         } else {
             supportElement.textContent = 'Not Supported';
             supportElement.className = 'status not-supported';
+            
+            // Keep all buttons disabled
+        }
+        
+        // Store support status for other functions to use
+        this.supportStatus = {
+            videoEncoder: videoEncoderSupported,
+            videoDecoder: videoDecoderSupported,
+            audioEncoder: audioEncoderSupported,
+            audioDecoder: audioDecoderSupported,
+            fullSupport: fullSupport,
+            partialSupport: partialSupport
+        };
+    }
+
+    updateSupportStatus(element, isSupported) {
+        if (isSupported) {
+            element.textContent = 'Available';
+            element.className = 'status supported';
+        } else {
+            element.textContent = 'Not Available';
+            element.className = 'status not-supported';
         }
     }
 
@@ -469,6 +522,13 @@ class WebCodecsTestSuite {
 
     async startCameraTest() {
         try {
+            // Check if VideoEncoder is available
+            if (!this.supportStatus || !this.supportStatus.videoEncoder) {
+                document.getElementById('live-test-status').innerHTML = 
+                    '❌ VideoEncoder not available in this browser.';
+                return;
+            }
+            
             // Find a supported video codec
             const supportedCodec = Object.entries(this.testResults.video)
                 .find(([_, result]) => result.supported && result.encoder);
@@ -639,6 +699,13 @@ class WebCodecsTestSuite {
 
     async startMicrophoneTest() {
         try {
+            // Check if AudioEncoder is available
+            if (!this.supportStatus || !this.supportStatus.audioEncoder) {
+                document.getElementById('live-test-status').innerHTML = 
+                    '❌ AudioEncoder not available in this browser.';
+                return;
+            }
+            
             // Find a supported audio codec
             const supportedCodec = Object.entries(this.testResults.audio)
                 .find(([_, result]) => result.supported && result.encoder);
@@ -1140,11 +1207,22 @@ class WebCodecsTestSuite {
         
         // Add browser compatibility info
         html += `<p><strong>Browser:</strong> ${this.getBrowserInfo()}</p>`;
-        html += `<p><strong>WebCodecs API:</strong> ${('VideoEncoder' in window) ? 'Available' : 'Not Available'}</p>`;
+        
+        if (this.supportStatus) {
+            html += '<h4>WebCodecs Components:</h4>';
+            html += '<div class="component-status">';
+            html += `<span class="component-item">VideoEncoder: <span class="status ${this.supportStatus.videoEncoder ? 'supported' : 'not-supported'}">${this.supportStatus.videoEncoder ? '✓' : '✗'}</span></span>`;
+            html += `<span class="component-item">VideoDecoder: <span class="status ${this.supportStatus.videoDecoder ? 'supported' : 'not-supported'}">${this.supportStatus.videoDecoder ? '✓' : '✗'}</span></span>`;
+            html += `<span class="component-item">AudioEncoder: <span class="status ${this.supportStatus.audioEncoder ? 'supported' : 'not-supported'}">${this.supportStatus.audioEncoder ? '✓' : '✗'}</span></span>`;
+            html += `<span class="component-item">AudioDecoder: <span class="status ${this.supportStatus.audioDecoder ? 'supported' : 'not-supported'}">${this.supportStatus.audioDecoder ? '✓' : '✗'}</span></span>`;
+            html += '</div>';
+        } else {
+            html += `<p><strong>WebCodecs API:</strong> ${('VideoEncoder' in window) ? 'Available' : 'Not Available'}</p>`;
+        }
         
         summary.innerHTML = html;
         
-        // Add CSS for codec tags
+        // Add CSS for codec tags and component status
         if (!document.getElementById('codec-tag-styles')) {
             const style = document.createElement('style');
             style.id = 'codec-tag-styles';
@@ -1160,6 +1238,27 @@ class WebCodecsTestSuite {
                 .codec-tag.supported {
                     background: #28a745;
                     color: white;
+                }
+                .component-status {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 0.5rem;
+                    margin-top: 0.5rem;
+                }
+                .component-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.3rem 0.5rem;
+                    background: #f8f9fa;
+                    border-radius: 4px;
+                    font-size: 0.9rem;
+                    border: 1px solid #e9ecef;
+                }
+                .component-item .status {
+                    font-size: 0.8rem;
+                    padding: 2px 6px;
+                    border-radius: 3px;
                 }
             `;
             document.head.appendChild(style);

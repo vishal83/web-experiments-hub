@@ -237,6 +237,11 @@ header p {
     color: white;
 }
 
+.status.partial {
+    background: #fd7e14;
+    color: white;
+}
+
 .status.unknown {
     background: #6c757d;
     color: white;
