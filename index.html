@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCodecs Support Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎥 WebCodecs Support Test</h1>
+            <p>Test video and audio codec support in your browser using the WebCodecs API</p>
+        </header>
+
+        <div class="info-section">
+            <h2>Browser Information</h2>
+            <div id="browser-info" class="info-grid">
+                <div class="info-item">
+                    <label>User Agent:</label>
+                    <span id="user-agent"></span>
+                </div>
+                <div class="info-item">
+                    <label>WebCodecs Support:</label>
+                    <span id="webcodecs-support" class="status unknown">Checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎬 Video Codec Support</h2>
+            <div class="controls">
+                <button id="test-video-codecs" class="btn primary">Test Video Codecs</button>
+                <button id="test-video-encoding" class="btn secondary" disabled>Test Video Encoding</button>
+            </div>
+            <div id="video-results" class="results-grid">
+                <!-- Video codec results will be populated here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎵 Audio Codec Support</h2>
+            <div class="controls">
+                <button id="test-audio-codecs" class="btn primary">Test Audio Codecs</button>
+                <button id="test-audio-encoding" class="btn secondary" disabled>Test Audio Encoding</button>
+            </div>
+            <div id="audio-results" class="results-grid">
+                <!-- Audio codec results will be populated here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Live Encoding Tests</h2>
+            <div class="controls">
+                <button id="start-camera-test" class="btn primary">Test Camera → WebCodecs</button>
+                <button id="start-microphone-test" class="btn primary">Test Microphone → WebCodecs</button>
+            </div>
+            <div class="live-test-area">
+                <video id="source-video" autoplay muted playsinline style="display: none;"></video>
+                <canvas id="test-canvas" width="320" height="240" style="display: none;"></canvas>
+                <div id="live-test-status"></div>
+                <div id="encoding-stats"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Test Results Summary</h2>
+            <div id="summary-results">
+                <p>Run tests to see results...</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Test your browser's WebCodecs API support across different devices and browsers.</p>
+            <p>Make sure to serve this over HTTPS for full functionality on remote devices.</p>
+        </footer>
+    </div>
+
+    <script src="webcodecs-test.js"></script>
+</body>
+</html>

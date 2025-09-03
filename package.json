@@ -1,0 +1,35 @@
+{
+  "name": "webcodecs-test-suite",
+  "version": "1.0.0",
+  "description": "A comprehensive WebCodecs API testing suite for browsers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "node server.js",
+    "python": "python3 server.py"
+  },
+  "keywords": [
+    "webcodecs",
+    "video",
+    "audio",
+    "encoding",
+    "decoding",
+    "browser",
+    "testing",
+    "codec"
+  ],
+  "author": "WebCodecs Test Suite",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "homepage": "http://localhost:8000",
+  "bugs": {
+    "url": "local"
+  }
+}
