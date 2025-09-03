@@ -34,7 +34,9 @@ A comprehensive testing suite for WebCodecs API support across different browser
 ## 🏠 Hub Structure
 
 - **`index.html`** - Main landing page with experiment directory
-- **`webcodecs-test.html`** - WebCodecs API testing suite
+- **`webcodecs/`** - WebCodecs API testing suite
+  - **`index.html`** - WebCodecs test interface
+  - **`webcodecs-test.js`** - WebCodecs implementation logic
 - **Future experiments** - More cutting-edge web API tests coming soon
 
 ## 🖥️ Quick Start
@@ -180,22 +182,30 @@ For comprehensive mobile testing:
 ```
 webroot/
 ├── index.html          # Main experiments hub landing page
-├── webcodecs-test.html # WebCodecs API testing interface
+├── webcodecs/          # WebCodecs API testing suite
+│   ├── index.html      # WebCodecs test interface
+│   └── webcodecs-test.js # WebCodecs logic and implementation
 ├── styles.css          # UI styling (shared across experiments)
-├── webcodecs-test.js   # WebCodecs test logic and integration
 ├── server.js           # Node.js HTTP server
 ├── server.py           # Python HTTP server
 ├── package.json        # Node.js dependencies
 └── README.md           # This documentation
 ```
 
-### Extending Tests
+### Extending Experiments
 
-To add new codec tests:
+To add new experiments:
 
-1. Add codec configuration to `videoCodecs` or `audioCodecs` arrays in `webcodecs-test.js`
-2. Specify the correct codec string and container format
-3. Test will automatically be included in the test suite
+1. **Create experiment folder:** `mkdir new-experiment/`
+2. **Add experiment files:** Create `index.html` and related assets
+3. **Update main hub:** Add experiment card to main `index.html`
+4. **Link relative paths:** Use `../styles.css` for shared styling
+
+To extend WebCodecs tests:
+
+1. Edit `webcodecs/webcodecs-test.js` to add new codec configurations
+2. Add codec to `videoCodecs` or `audioCodecs` arrays
+3. Tests will automatically be included in the test suite
 
 ## 📄 License
 
