@@ -379,19 +379,58 @@
                 const hasAudioEncoder = (typeof AudioEncoder !== 'undefined') || (typeof window.AudioEncoder !== 'undefined');
                 const hasAudioDecoder = (typeof AudioDecoder !== 'undefined') || (typeof window.AudioDecoder !== 'undefined');
                 
-                // Debug logging (remove in production)
-                console.log('WebCodecs Detection:', {
+                // Enhanced debug logging
+                const debugInfo = {
+                    // API Availability
                     VideoEncoder: hasVideoEncoder,
                     VideoDecoder: hasVideoDecoder, 
                     AudioEncoder: hasAudioEncoder,
                     AudioDecoder: hasAudioDecoder,
-                    isSecureContext: window.isSecureContext
-                });
+                    
+                    // Global scope check
+                    VideoEncoder_global: typeof VideoEncoder !== 'undefined',
+                    VideoDecoder_global: typeof VideoDecoder !== 'undefined',
+                    AudioEncoder_global: typeof AudioEncoder !== 'undefined', 
+                    AudioDecoder_global: typeof AudioDecoder !== 'undefined',
+                    
+                    // Window scope check
+                    VideoEncoder_window: typeof window.VideoEncoder !== 'undefined',
+                    VideoDecoder_window: typeof window.VideoDecoder !== 'undefined',
+                    AudioEncoder_window: typeof window.AudioEncoder !== 'undefined',
+                    AudioDecoder_window: typeof window.AudioDecoder !== 'undefined',
+                    
+                    // Context info
+                    isSecureContext: window.isSecureContext,
+                    crossOriginIsolated: window.crossOriginIsolated,
+                    location: window.location.href,
+                    userAgent: navigator.userAgent.substring(0, 100) + '...',
+                    
+                    // Error catching
+                    errors: []
+                };
+                
+                // Try to access APIs directly to catch any errors
+                try {
+                    if (typeof VideoEncoder !== 'undefined') {
+                        const testConfig = { codec: 'avc1.42E01E', width: 640, height: 480, bitrate: 1000000 };
+                        VideoEncoder.isConfigSupported(testConfig).catch(e => {
+                            debugInfo.errors.push(`VideoEncoder.isConfigSupported error: ${e.message}`);
+                        });
+                    }
+                } catch (e) {
+                    debugInfo.errors.push(`VideoEncoder access error: ${e.message}`);
+                }
                 
                 const videoSupport = hasVideoEncoder || hasVideoDecoder;
                 const audioSupport = hasAudioEncoder || hasAudioDecoder;
                 const fullSupport = hasVideoEncoder && hasVideoDecoder && hasAudioEncoder && hasAudioDecoder;
                 const partialSupport = videoSupport || audioSupport;
+                
+                console.group('🎬 WebCodecs Detection Debug');
+                console.log('Detection Results:', debugInfo);
+                console.log('Full Support:', fullSupport);
+                console.log('Partial Support:', partialSupport);
+                console.groupEnd();
                 
                 if (fullSupport) {
                     indicator.className = 'support-indicator supported';
