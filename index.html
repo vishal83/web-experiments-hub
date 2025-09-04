@@ -213,6 +213,87 @@
             opacity: 1;
             visibility: visible;
         }
+        
+        /* Summary card styles */
+        .summary-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid #dee2e6;
+            border-left: 5px solid #007bff;
+        }
+        
+        .summary-content {
+            margin-top: 1rem;
+        }
+        
+        .browser-info-summary {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .info-value {
+            color: #212529;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 0.9em;
+        }
+        
+        .api-support-summary h4 {
+            margin: 0 0 1rem 0;
+            color: #343a40;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .support-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .api-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .support-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-text {
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .status-text.supported {
+            color: #28a745;
+        }
+        
+        .status-text.not-supported {
+            color: #dc3545;
+        }
+        
+        .status-text.partial {
+            color: #fd7e14;
+        }
     </style>
 </head>
 <body>
@@ -232,6 +313,45 @@
         </div>
 
         <div class="experiment-grid">
+            <!-- Browser Summary Card -->
+            <div class="experiment-card summary-card">
+                <h3>📊 Browser Summary</h3>
+                <div class="summary-content">
+                    <div class="browser-info-summary">
+                        <div class="info-row">
+                            <span class="info-label">Browser:</span>
+                            <span class="info-value" id="summary-browser">Detecting...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Version:</span>
+                            <span class="info-value" id="summary-version">Detecting...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Secure Context:</span>
+                            <span class="info-value" id="summary-secure">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="api-support-summary">
+                        <h4>API Support Status</h4>
+                        <div class="support-row">
+                            <span class="api-name">WebCodecs</span>
+                            <span class="support-status" id="summary-webcodecs">
+                                <span class="support-indicator checking" data-tooltip="Checking..."></span>
+                                <span class="status-text">Checking...</span>
+                            </span>
+                        </div>
+                        <div class="support-row">
+                            <span class="api-name">SharedArrayBuffer</span>
+                            <span class="support-status" id="summary-sharedarraybuffer">
+                                <span class="support-indicator checking" data-tooltip="Checking..."></span>
+                                <span class="status-text">Checking...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- WebCodecs Test Suite -->
             <div class="experiment-card">
                 <h3>🎬 WebCodecs API Test Suite <span class="support-indicator checking" id="webcodecs-support" data-tooltip="Checking WebCodecs support..."></span></h3>
@@ -433,6 +553,7 @@
                 if (fullSupport) {
                     indicator.className = 'support-indicator supported';
                     indicator.setAttribute('data-tooltip', 'WebCodecs fully supported (Video + Audio)');
+                    updateSummaryAPIStatus('webcodecs', 'supported', 'Fully Supported');
                 } else if (partialSupport) {
                     const supportedApis = [];
                     if (videoSupport) supportedApis.push('Video');
@@ -440,16 +561,20 @@
                     
                     indicator.className = 'support-indicator partial';
                     indicator.setAttribute('data-tooltip', `WebCodecs partially supported (${supportedApis.join(', ')})`);
+                    updateSummaryAPIStatus('webcodecs', 'partial', `Partial (${supportedApis.join(', ')})`);
                 } else {
                     indicator.className = 'support-indicator not-supported';
-                    indicator.setAttribute('data-tooltip', window.isSecureContext ? 
+                    const tooltip = window.isSecureContext ? 
                         'WebCodecs not supported in this browser' : 
-                        'WebCodecs requires HTTPS');
+                        'WebCodecs requires HTTPS';
+                    indicator.setAttribute('data-tooltip', tooltip);
+                    updateSummaryAPIStatus('webcodecs', 'not-supported', window.isSecureContext ? 'Not Supported' : 'Requires HTTPS');
                 }
             } catch (error) {
                 console.error('WebCodecs detection error:', error);
                 indicator.className = 'support-indicator not-supported';
                 indicator.setAttribute('data-tooltip', 'WebCodecs detection failed: ' + error.message);
+                updateSummaryAPIStatus('webcodecs', 'not-supported', 'Detection Error');
             }
         }
 
@@ -464,19 +589,24 @@
                 if (hasSharedArrayBuffer && isSecureContext && isCrossOriginIsolated) {
                     indicator.className = 'support-indicator supported';
                     indicator.setAttribute('data-tooltip', 'SharedArrayBuffer fully supported');
+                    updateSummaryAPIStatus('sharedarraybuffer', 'supported', 'Fully Supported');
                 } else if (hasSharedArrayBuffer && isSecureContext) {
                     indicator.className = 'support-indicator partial';
                     indicator.setAttribute('data-tooltip', 'SharedArrayBuffer available but needs cross-origin isolation');
+                    updateSummaryAPIStatus('sharedarraybuffer', 'partial', 'Needs Cross-Origin Isolation');
                 } else if (hasSharedArrayBuffer) {
                     indicator.className = 'support-indicator partial';
                     indicator.setAttribute('data-tooltip', 'SharedArrayBuffer available but needs HTTPS');
+                    updateSummaryAPIStatus('sharedarraybuffer', 'partial', 'Requires HTTPS');
                 } else {
                     indicator.className = 'support-indicator not-supported';
                     indicator.setAttribute('data-tooltip', 'SharedArrayBuffer not supported');
+                    updateSummaryAPIStatus('sharedarraybuffer', 'not-supported', 'Not Supported');
                 }
             } catch (error) {
                 indicator.className = 'support-indicator not-supported';
                 indicator.setAttribute('data-tooltip', 'SharedArrayBuffer not supported');
+                updateSummaryAPIStatus('sharedarraybuffer', 'not-supported', 'Error');
             }
         }
 
@@ -499,8 +629,78 @@
             attempt();
         }
 
+        // Update summary card
+        function updateSummaryCard() {
+            // Browser detection
+            const browserInfo = getBrowserInfo();
+            const version = getBrowserVersion();
+            const isSecure = window.isSecureContext;
+            
+            document.getElementById('summary-browser').textContent = browserInfo;
+            document.getElementById('summary-version').textContent = version || 'Unknown';
+            document.getElementById('summary-secure').textContent = isSecure ? 'Yes (HTTPS/localhost)' : 'No (HTTP)';
+            
+            // Set secure context color
+            const secureElement = document.getElementById('summary-secure');
+            secureElement.style.color = isSecure ? '#28a745' : '#dc3545';
+        }
+        
+        function getBrowserVersion() {
+            const ua = navigator.userAgent;
+            let version = 'Unknown';
+            
+            if (ua.includes('Chrome') && !ua.includes('Edg')) {
+                const match = ua.match(/Chrome\/([0-9.]+)/);
+                version = match ? match[1] : 'Unknown';
+            } else if (ua.includes('Firefox')) {
+                const match = ua.match(/Firefox\/([0-9.]+)/);
+                version = match ? match[1] : 'Unknown';
+            } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+                const match = ua.match(/Version\/([0-9.]+)/);
+                version = match ? match[1] : 'Unknown';
+            } else if (ua.includes('Edg')) {
+                const match = ua.match(/Edg\/([0-9.]+)/);
+                version = match ? match[1] : 'Unknown';
+            }
+            
+            return version;
+        }
+        
+        function getBrowserInfo() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            
+            if (ua.includes('Firefox')) {
+                browser = 'Firefox';
+            } else if (ua.includes('Chrome') && !ua.includes('Edg')) {
+                browser = 'Chrome';
+            } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+                browser = 'Safari';
+            } else if (ua.includes('Edg')) {
+                browser = 'Edge';
+            }
+            
+            return browser;
+        }
+        
+        function updateSummaryAPIStatus(apiName, status, statusText) {
+            const summaryElement = document.getElementById(`summary-${apiName.toLowerCase()}`);
+            const indicatorElement = summaryElement.querySelector('.support-indicator');
+            const textElement = summaryElement.querySelector('.status-text');
+            
+            indicatorElement.className = `support-indicator ${status}`;
+            textElement.textContent = statusText;
+            textElement.className = `status-text ${status}`;
+            
+            // Update tooltip
+            indicatorElement.setAttribute('data-tooltip', statusText);
+        }
+
         // Add some interactive effects
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize summary card
+            updateSummaryCard();
+            
             // Check API support with retry mechanism
             setTimeout(() => retryDetection(checkWebCodecsSupport), 100);
             setTimeout(() => retryDetection(checkSharedArrayBufferSupport), 150);
