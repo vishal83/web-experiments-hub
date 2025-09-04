@@ -326,6 +326,10 @@
                             <span class="info-label">Version:</span>
                             <span class="info-value" id="summary-version">Detecting...</span>
                         </div>
+                        <div class="info-row" id="device-model-row" style="display: none;">
+                            <span class="info-label">Device Model:</span>
+                            <span class="info-value" id="summary-device">Detecting...</span>
+                        </div>
                         <div class="info-row">
                             <span class="info-label">Secure Context:</span>
                             <span class="info-value" id="summary-secure">Checking...</span>
@@ -635,6 +639,7 @@
             const browserInfo = getBrowserInfo();
             const version = getBrowserVersion();
             const isSecure = window.isSecureContext;
+            const deviceInfo = getDeviceInfo();
             
             document.getElementById('summary-browser').textContent = browserInfo;
             document.getElementById('summary-version').textContent = version || 'Unknown';
@@ -643,6 +648,14 @@
             // Set secure context color
             const secureElement = document.getElementById('summary-secure');
             secureElement.style.color = isSecure ? '#28a745' : '#dc3545';
+            
+            // Show device model for mobile devices
+            if (deviceInfo.isMobile && deviceInfo.model) {
+                document.getElementById('device-model-row').style.display = 'flex';
+                document.getElementById('summary-device').textContent = deviceInfo.model;
+            } else {
+                document.getElementById('device-model-row').style.display = 'none';
+            }
         }
         
         function getBrowserVersion() {
@@ -681,6 +694,115 @@
             }
             
             return browser;
+        }
+        
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let isMobile = false;
+            let model = null;
+            
+            // Check if it's a mobile device
+            isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(ua);
+            
+            if (isMobile) {
+                // iPhone detection
+                if (ua.includes('iPhone')) {
+                    // Try to extract iPhone model
+                    const iphoneMatch = ua.match(/iPhone\s?(?:OS\s)?([0-9_]+)/i);
+                    if (iphoneMatch) {
+                        const osVersion = iphoneMatch[1].replace(/_/g, '.');
+                        model = `iPhone (iOS ${osVersion})`;
+                    } else {
+                        model = 'iPhone';
+                    }
+                }
+                // iPad detection
+                else if (ua.includes('iPad')) {
+                    const ipadMatch = ua.match(/iPad.*OS\s([0-9_]+)/i);
+                    if (ipadMatch) {
+                        const osVersion = ipadMatch[1].replace(/_/g, '.');
+                        model = `iPad (iOS ${osVersion})`;
+                    } else {
+                        model = 'iPad';
+                    }
+                }
+                // Android device detection
+                else if (ua.includes('Android')) {
+                    const androidMatch = ua.match(/Android\s([0-9.]+)/);
+                    const androidVersion = androidMatch ? androidMatch[1] : 'Unknown';
+                    
+                    // Try to extract device model
+                    let deviceModel = 'Android Device';
+                    
+                    // Samsung devices
+                    if (ua.includes('SM-')) {
+                        const samsungMatch = ua.match(/SM-([A-Z0-9]+)/);
+                        if (samsungMatch) {
+                            deviceModel = `Samsung ${samsungMatch[1]}`;
+                        }
+                    }
+                    // Google Pixel devices
+                    else if (ua.includes('Pixel')) {
+                        const pixelMatch = ua.match(/Pixel\s?([0-9a-zA-Z\s]*)/);
+                        if (pixelMatch && pixelMatch[1].trim()) {
+                            deviceModel = `Google Pixel ${pixelMatch[1].trim()}`;
+                        } else {
+                            deviceModel = 'Google Pixel';
+                        }
+                    }
+                    // LG devices
+                    else if (ua.includes('LG-')) {
+                        const lgMatch = ua.match(/LG-([A-Z0-9]+)/);
+                        if (lgMatch) {
+                            deviceModel = `LG ${lgMatch[1]}`;
+                        }
+                    }
+                    // HTC devices
+                    else if (ua.includes('HTC')) {
+                        const htcMatch = ua.match(/HTC[_\s]([A-Za-z0-9\s]+)/);
+                        if (htcMatch) {
+                            deviceModel = `HTC ${htcMatch[1].trim()}`;
+                        } else {
+                            deviceModel = 'HTC Device';
+                        }
+                    }
+                    // OnePlus devices
+                    else if (ua.includes('OnePlus') || ua.includes('ONEPLUS')) {
+                        const oneplusMatch = ua.match(/(?:OnePlus|ONEPLUS)\s?([A-Z0-9]+)/i);
+                        if (oneplusMatch) {
+                            deviceModel = `OnePlus ${oneplusMatch[1]}`;
+                        } else {
+                            deviceModel = 'OnePlus Device';
+                        }
+                    }
+                    // Xiaomi devices
+                    else if (ua.includes('Mi ') || ua.includes('Redmi')) {
+                        const xiaomiMatch = ua.match(/(Mi|Redmi)\s([A-Za-z0-9\s]+)/);
+                        if (xiaomiMatch) {
+                            deviceModel = `Xiaomi ${xiaomiMatch[1]} ${xiaomiMatch[2].trim()}`;
+                        } else {
+                            deviceModel = 'Xiaomi Device';
+                        }
+                    }
+                    
+                    model = `${deviceModel} (Android ${androidVersion})`;
+                }
+                // Other mobile devices
+                else if (ua.includes('BlackBerry')) {
+                    model = 'BlackBerry';
+                }
+                else if (ua.includes('Windows Phone')) {
+                    model = 'Windows Phone';
+                }
+                else {
+                    model = 'Mobile Device';
+                }
+            }
+            
+            return {
+                isMobile: isMobile,
+                model: model
+            };
         }
         
         function updateSummaryAPIStatus(apiName, status, statusText) {
