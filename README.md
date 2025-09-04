@@ -289,12 +289,85 @@ cd web-experiments-hub
 node server.js
 ```
 
-### Production Deployment
-The hub can be deployed to any static hosting service:
-- **GitHub Pages**: For static hosting
-- **Vercel/Netlify**: For serverless deployment  
-- **Docker**: Container-based deployment
-- **Traditional Servers**: Node.js or Python hosting
+### Production Deployment Options
+
+The hub can be deployed to various hosting services, but **API support varies by platform**:
+
+#### 🟢 **Full API Support (Recommended)**
+
+For **complete SharedArrayBuffer** and advanced API support:
+
+**1. Netlify (⭐ Recommended)**
+```bash
+# 1. Connect GitHub repo to Netlify
+# 2. The included _headers file enables cross-origin isolation
+# 3. Deploy automatically from GitHub pushes
+```
+**✅ Supports**: All APIs | HTTPS | Custom Headers | Auto-Deploy
+
+**2. Vercel**
+```json
+// vercel.json
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    }
+  ]
+}
+```
+**✅ Supports**: All APIs | HTTPS | Custom Headers | Serverless
+
+**3. Cloudflare Pages**
+```
+# _headers file (already included)
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+```
+**✅ Supports**: All APIs | HTTPS | Custom Headers | CDN
+
+#### 🟡 **Partial API Support**
+
+**GitHub Pages**
+```bash
+# Current live demo - limited functionality
+https://vishal83.github.io/web-experiments-hub/
+```
+**⚠️ Limitations**: 
+- ✅ **WebCodecs**: Full support (HTTPS provided)
+- ❌ **SharedArrayBuffer**: **Blocked** - Cannot set required headers
+- ❌ **Custom Headers**: GitHub Pages doesn't support `_headers` files
+- ❌ **Cross-Origin Isolation**: Cannot enable `crossOriginIsolated`
+
+#### 🔴 **API Support Comparison Table**
+
+| Platform | WebCodecs | SharedArrayBuffer | Custom Headers | HTTPS |
+|----------|-----------|-------------------|----------------|-------|
+| **Netlify** | ✅ Full | ✅ Full | ✅ Yes | ✅ Yes |
+| **Vercel** | ✅ Full | ✅ Full | ✅ Yes | ✅ Yes |
+| **Cloudflare** | ✅ Full | ✅ Full | ✅ Yes | ✅ Yes |
+| **GitHub Pages** | ✅ Full | ❌ **Blocked** | ❌ No | ✅ Yes |
+| **Local Server** | ✅ Full | ✅ Full | ✅ Yes | ⚠️ HTTP Only |
+
+### 🎯 **Deployment Recommendation**
+
+For the **complete experience**:
+1. **Deploy to Netlify** for full API support
+2. **Keep GitHub Pages** for general showcase
+3. **Use local server** for development
+
+### Quick Netlify Setup
+```bash
+# 1. Push to GitHub (already done)
+# 2. Visit https://netlify.com
+# 3. "New site from Git" → Select your repo
+# 4. Deploy - _headers file enables SharedArrayBuffer automatically
+```
 
 ## 📄 License
 
