@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharedArrayBuffer Support Test - Web Experiments Hub</title>
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .security-requirement {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .security-requirement.met {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .security-requirement.not-met {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .security-requirement.unknown {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        .worker-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .performance-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb">
+        <a href="../index.html" class="back-link">← Back to Experiments Hub</a>
+    </nav>
+
+    <header>
+        <h1>SharedArrayBuffer Support Test</h1>
+        <p>Test browser support for SharedArrayBuffer and cross-origin isolation requirements</p>
+    </header>
+
+    <main>
+        <!-- Browser Information -->
+        <section class="info-section">
+            <h2>Browser Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Browser:</label>
+                    <span id="browser-info">Detecting...</span>
+                </div>
+                <div class="info-item">
+                    <label>User Agent:</label>
+                    <span id="user-agent">Detecting...</span>
+                </div>
+                <div class="info-item">
+                    <label>Secure Context:</label>
+                    <span id="secure-context" class="status">Checking...</span>
+                </div>
+                <div class="info-item">
+                    <label>SharedArrayBuffer Support:</label>
+                    <span id="sharedarraybuffer-support" class="status">Checking...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Requirements -->
+        <section class="test-section">
+            <h2>Security Requirements</h2>
+            <p>SharedArrayBuffer requires specific security headers and conditions:</p>
+            
+            <div id="security-requirements">
+                <div class="security-requirement unknown" id="https-requirement">
+                    <strong>HTTPS (Secure Context):</strong>
+                    <span id="https-status">Checking...</span>
+                </div>
+                <div class="security-requirement unknown" id="coop-requirement">
+                    <strong>Cross-Origin-Opener-Policy:</strong>
+                    <span id="coop-status">Checking...</span>
+                </div>
+                <div class="security-requirement unknown" id="coep-requirement">
+                    <strong>Cross-Origin-Embedder-Policy:</strong>
+                    <span id="coep-status">Checking...</span>
+                </div>
+                <div class="security-requirement unknown" id="isolation-requirement">
+                    <strong>Cross-Origin Isolation:</strong>
+                    <span id="isolation-status">Checking...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Basic Tests -->
+        <section class="test-section">
+            <h2>Basic SharedArrayBuffer Tests</h2>
+            
+            <div class="test-controls">
+                <button class="btn primary" id="test-basic" disabled>Test Basic Functionality</button>
+                <button class="btn secondary" id="test-worker" disabled>Test Worker Communication</button>
+                <button class="btn secondary" id="test-performance" disabled>Performance Comparison</button>
+            </div>
+
+            <div id="basic-test-results" class="test-results" style="display: none;">
+                <h3>Basic Test Results</h3>
+                <div id="basic-results"></div>
+            </div>
+
+            <div id="worker-test-results" class="test-results" style="display: none;">
+                <h3>Worker Communication Results</h3>
+                <div id="worker-output" class="worker-output"></div>
+            </div>
+
+            <div id="performance-test-results" class="test-results" style="display: none;">
+                <h3>Performance Comparison Results</h3>
+                <div class="performance-stats" id="performance-stats"></div>
+                <div id="performance-details"></div>
+            </div>
+        </section>
+
+        <!-- Memory Information -->
+        <section class="info-section">
+            <h2>Memory Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Device Memory:</label>
+                    <span id="device-memory">Checking...</span>
+                </div>
+                <div class="info-item">
+                    <label>JS Heap Size Used:</label>
+                    <span id="heap-used">Checking...</span>
+                </div>
+                <div class="info-item">
+                    <label>JS Heap Size Total:</label>
+                    <span id="heap-total">Checking...</span>
+                </div>
+                <div class="info-item">
+                    <label>JS Heap Size Limit:</label>
+                    <span id="heap-limit">Checking...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary -->
+        <section class="info-section">
+            <h2>Test Summary</h2>
+            <div id="summary-results">
+                <p>Run tests to see summary...</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>SharedArrayBuffer Test Suite | <a href="https://github.com/vishal83/web-experiments-hub">GitHub</a></p>
+    </footer>
+
+    <script src="sharedarraybuffer-test.js"></script>
+</body>
+</html>

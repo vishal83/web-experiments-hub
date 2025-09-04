@@ -25,6 +25,7 @@ The hub uses a **modular experiment structure** where each web technology gets i
 📁 Web Experiments Hub
 ├── 🏠 Landing Page (index.html)
 ├── 🎬 webcodecs/ - WebCodecs API Testing
+├── 🧠 sharedarraybuffer/ - SharedArrayBuffer API Testing
 ├── 🌐 webrtc/ - WebRTC Testing (planned)
 ├── 🎮 webgpu/ - WebGPU Testing (planned)
 ├── 📡 web-serial/ - Web Serial API Testing (planned)
@@ -66,6 +67,29 @@ The **flagship experiment** - a comprehensive WebCodecs API testing platform.
 
 ---
 
+### SharedArrayBuffer API Testing Suite ✅ **Production Ready**
+
+A **comprehensive platform** for testing SharedArrayBuffer support and cross-origin isolation requirements.
+
+**🎯 What it Tests:**
+- **SharedArrayBuffer API**: Availability detection and basic operations
+- **Security Requirements**: HTTPS, COOP, COEP headers validation
+- **Cross-Origin Isolation**: Cross-origin isolation status and requirements
+- **Web Worker Communication**: Memory sharing between main thread and workers
+- **Atomics Operations**: Thread-safe memory operations testing
+- **Performance Comparison**: SharedArrayBuffer vs ArrayBuffer benchmarks
+
+**🌟 Key Features:**
+- Real-time security requirements validation
+- Interactive worker communication testing
+- Performance benchmarking with detailed metrics
+- Memory usage monitoring and analysis
+- Cross-browser compatibility detection
+
+**📍 Access:** `/sharedarraybuffer/` | **Status:** ✅ Fully Functional
+
+---
+
 ## 🔮 Planned Experiments
 
 ### 🌐 WebRTC Data Channels
@@ -104,6 +128,9 @@ web-experiments-hub/
 ├── 🎬 webcodecs/              # WebCodecs experiment (✅ Complete)
 │   ├── index.html             # WebCodecs test interface
 │   └── webcodecs-test.js      # WebCodecs implementation
+├── 🧠 sharedarraybuffer/      # SharedArrayBuffer experiment (✅ Complete)
+│   ├── index.html             # SharedArrayBuffer test interface
+│   └── sharedarraybuffer-test.js  # SharedArrayBuffer implementation
 ├── 🌐 webrtc/                 # WebRTC experiments (📋 Planned)
 ├── 🎮 webgpu/                 # WebGPU experiments (📋 Planned)
 ├── 📡 web-serial/             # Web Serial experiments (📋 Planned)
@@ -131,9 +158,10 @@ PORT=8080 node server.js
 
 ### 2️⃣ Access the Hub
 ```
-🏠 Main Hub:        http://localhost:8000
-🎬 WebCodecs Test:  http://localhost:8000/webcodecs/
-📱 Mobile Testing:  http://[your-ip]:8000 (check console output)
+🏠 Main Hub:            http://localhost:8000
+🎬 WebCodecs Test:      http://localhost:8000/webcodecs/
+🧠 SharedArrayBuffer:   http://localhost:8000/sharedarraybuffer/
+📱 Mobile Testing:      http://[your-ip]:8000 (check console output)
 ```
 
 ### 3️⃣ For Remote Device Testing
