@@ -151,6 +151,68 @@
             color: #007bff;
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
         }
+        
+        /* Support indicator styles */
+        .support-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+            position: relative;
+            vertical-align: middle;
+        }
+        
+        .support-indicator.supported {
+            background: #28a745;
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+        }
+        
+        .support-indicator.not-supported {
+            background: #dc3545;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+        }
+        
+        .support-indicator.checking {
+            background: #ffc107;
+            box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+            animation: pulse-check 1.5s infinite;
+        }
+        
+        .support-indicator.partial {
+            background: conic-gradient(#28a745 0deg 180deg, #dc3545 180deg 360deg);
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+        }
+        
+        @keyframes pulse-check {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Tooltip for support indicators */
+        .support-indicator::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .support-indicator:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
 <body>
@@ -173,7 +235,7 @@
             <!-- WebCodecs Test Suite -->
             <div class="experiment-card">
                 <div class="status-badge status-ready">Production Ready</div>
-                <h3>🎬 WebCodecs API Test Suite</h3>
+                <h3>🎬 WebCodecs API Test Suite <span class="support-indicator checking" id="webcodecs-support" data-tooltip="Checking WebCodecs support..."></span></h3>
                 <div class="description">
                     Comprehensive testing platform for the WebCodecs API. Test video and audio codec 
                     support, perform real-time encoding from camera/microphone streams, and validate 
@@ -192,7 +254,7 @@
             <!-- SharedArrayBuffer Test Suite -->
             <div class="experiment-card">
                 <div class="status-badge status-ready">Production Ready</div>
-                <h3>🧠 SharedArrayBuffer API Test</h3>
+                <h3>🧠 SharedArrayBuffer API Test <span class="support-indicator checking" id="sharedarraybuffer-support" data-tooltip="Checking SharedArrayBuffer support..."></span></h3>
                 <div class="description">
                     Comprehensive testing platform for SharedArrayBuffer and cross-origin isolation. Test 
                     memory sharing between web workers, validate security requirements, and benchmark 
@@ -306,8 +368,68 @@
     </div>
 
     <script>
+        // Support detection functions
+        function checkWebCodecsSupport() {
+            const indicator = document.getElementById('webcodecs-support');
+            
+            try {
+                const hasVideoEncoder = typeof VideoEncoder !== 'undefined';
+                const hasVideoDecoder = typeof VideoDecoder !== 'undefined';
+                const hasAudioEncoder = typeof AudioEncoder !== 'undefined';
+                const hasAudioDecoder = typeof AudioDecoder !== 'undefined';
+                
+                const fullSupport = hasVideoEncoder && hasVideoDecoder && hasAudioEncoder && hasAudioDecoder;
+                const partialSupport = hasVideoEncoder || hasVideoDecoder || hasAudioEncoder || hasAudioDecoder;
+                
+                if (fullSupport) {
+                    indicator.className = 'support-indicator supported';
+                    indicator.setAttribute('data-tooltip', 'WebCodecs fully supported');
+                } else if (partialSupport) {
+                    indicator.className = 'support-indicator partial';
+                    indicator.setAttribute('data-tooltip', 'WebCodecs partially supported');
+                } else {
+                    indicator.className = 'support-indicator not-supported';
+                    indicator.setAttribute('data-tooltip', 'WebCodecs not supported');
+                }
+            } catch (error) {
+                indicator.className = 'support-indicator not-supported';
+                indicator.setAttribute('data-tooltip', 'WebCodecs not supported');
+            }
+        }
+
+        function checkSharedArrayBufferSupport() {
+            const indicator = document.getElementById('sharedarraybuffer-support');
+            
+            try {
+                const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+                const isSecureContext = window.isSecureContext;
+                const isCrossOriginIsolated = window.crossOriginIsolated;
+                
+                if (hasSharedArrayBuffer && isSecureContext && isCrossOriginIsolated) {
+                    indicator.className = 'support-indicator supported';
+                    indicator.setAttribute('data-tooltip', 'SharedArrayBuffer fully supported');
+                } else if (hasSharedArrayBuffer && isSecureContext) {
+                    indicator.className = 'support-indicator partial';
+                    indicator.setAttribute('data-tooltip', 'SharedArrayBuffer available but needs cross-origin isolation');
+                } else if (hasSharedArrayBuffer) {
+                    indicator.className = 'support-indicator partial';
+                    indicator.setAttribute('data-tooltip', 'SharedArrayBuffer available but needs HTTPS');
+                } else {
+                    indicator.className = 'support-indicator not-supported';
+                    indicator.setAttribute('data-tooltip', 'SharedArrayBuffer not supported');
+                }
+            } catch (error) {
+                indicator.className = 'support-indicator not-supported';
+                indicator.setAttribute('data-tooltip', 'SharedArrayBuffer not supported');
+            }
+        }
+
         // Add some interactive effects
         document.addEventListener('DOMContentLoaded', () => {
+            // Check API support
+            setTimeout(checkWebCodecsSupport, 100);
+            setTimeout(checkSharedArrayBufferSupport, 150);
+            
             const cards = document.querySelectorAll('.experiment-card');
             
             cards.forEach(card => {
