@@ -373,27 +373,46 @@
             const indicator = document.getElementById('webcodecs-support');
             
             try {
-                const hasVideoEncoder = typeof VideoEncoder !== 'undefined';
-                const hasVideoDecoder = typeof VideoDecoder !== 'undefined';
-                const hasAudioEncoder = typeof AudioEncoder !== 'undefined';
-                const hasAudioDecoder = typeof AudioDecoder !== 'undefined';
+                // Check both global and window scope for WebCodecs APIs
+                const hasVideoEncoder = (typeof VideoEncoder !== 'undefined') || (typeof window.VideoEncoder !== 'undefined');
+                const hasVideoDecoder = (typeof VideoDecoder !== 'undefined') || (typeof window.VideoDecoder !== 'undefined');
+                const hasAudioEncoder = (typeof AudioEncoder !== 'undefined') || (typeof window.AudioEncoder !== 'undefined');
+                const hasAudioDecoder = (typeof AudioDecoder !== 'undefined') || (typeof window.AudioDecoder !== 'undefined');
                 
+                // Debug logging (remove in production)
+                console.log('WebCodecs Detection:', {
+                    VideoEncoder: hasVideoEncoder,
+                    VideoDecoder: hasVideoDecoder, 
+                    AudioEncoder: hasAudioEncoder,
+                    AudioDecoder: hasAudioDecoder,
+                    isSecureContext: window.isSecureContext
+                });
+                
+                const videoSupport = hasVideoEncoder || hasVideoDecoder;
+                const audioSupport = hasAudioEncoder || hasAudioDecoder;
                 const fullSupport = hasVideoEncoder && hasVideoDecoder && hasAudioEncoder && hasAudioDecoder;
-                const partialSupport = hasVideoEncoder || hasVideoDecoder || hasAudioEncoder || hasAudioDecoder;
+                const partialSupport = videoSupport || audioSupport;
                 
                 if (fullSupport) {
                     indicator.className = 'support-indicator supported';
-                    indicator.setAttribute('data-tooltip', 'WebCodecs fully supported');
+                    indicator.setAttribute('data-tooltip', 'WebCodecs fully supported (Video + Audio)');
                 } else if (partialSupport) {
+                    const supportedApis = [];
+                    if (videoSupport) supportedApis.push('Video');
+                    if (audioSupport) supportedApis.push('Audio');
+                    
                     indicator.className = 'support-indicator partial';
-                    indicator.setAttribute('data-tooltip', 'WebCodecs partially supported');
+                    indicator.setAttribute('data-tooltip', `WebCodecs partially supported (${supportedApis.join(', ')})`);
                 } else {
                     indicator.className = 'support-indicator not-supported';
-                    indicator.setAttribute('data-tooltip', 'WebCodecs not supported');
+                    indicator.setAttribute('data-tooltip', window.isSecureContext ? 
+                        'WebCodecs not supported in this browser' : 
+                        'WebCodecs requires HTTPS');
                 }
             } catch (error) {
+                console.error('WebCodecs detection error:', error);
                 indicator.className = 'support-indicator not-supported';
-                indicator.setAttribute('data-tooltip', 'WebCodecs not supported');
+                indicator.setAttribute('data-tooltip', 'WebCodecs detection failed: ' + error.message);
             }
         }
 
@@ -424,11 +443,47 @@
             }
         }
 
+        // Retry mechanism for API detection
+        function retryDetection(detectionFunc, maxRetries = 3, delay = 200) {
+            let attempts = 0;
+            
+            function attempt() {
+                attempts++;
+                try {
+                    detectionFunc();
+                } catch (error) {
+                    console.warn(`Detection attempt ${attempts} failed:`, error);
+                    if (attempts < maxRetries) {
+                        setTimeout(attempt, delay * attempts);
+                    }
+                }
+            }
+            
+            attempt();
+        }
+
         // Add some interactive effects
         document.addEventListener('DOMContentLoaded', () => {
-            // Check API support
-            setTimeout(checkWebCodecsSupport, 100);
-            setTimeout(checkSharedArrayBufferSupport, 150);
+            // Check API support with retry mechanism
+            setTimeout(() => retryDetection(checkWebCodecsSupport), 100);
+            setTimeout(() => retryDetection(checkSharedArrayBufferSupport), 150);
+            
+            // Also check when page becomes visible (some APIs might not be available until then)
+            if (document.visibilityState === 'visible') {
+                setTimeout(() => {
+                    retryDetection(checkWebCodecsSupport);
+                    retryDetection(checkSharedArrayBufferSupport);
+                }, 500);
+            }
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    setTimeout(() => {
+                        retryDetection(checkWebCodecsSupport);
+                        retryDetection(checkSharedArrayBufferSupport);
+                    }, 100);
+                }
+            });
             
             const cards = document.querySelectorAll('.experiment-card');
             
