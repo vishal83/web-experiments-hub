@@ -21,7 +21,8 @@ class WebCodecsTestSuite {
         this.testResults = {
             video: {},
             audio: {},
-            liveTests: {}
+            liveTests: {},
+            hardwareAcceleration: {}
         };
 
         this.init();
@@ -44,6 +45,7 @@ class WebCodecsTestSuite {
         document.getElementById('test-audio-encoding').addEventListener('click', () => this.testAudioEncoding());
         document.getElementById('test-video-roundtrip').addEventListener('click', () => this.testVideoRoundtrip());
         document.getElementById('test-audio-roundtrip').addEventListener('click', () => this.testAudioRoundtrip());
+        document.getElementById('test-hardware-acceleration').addEventListener('click', () => this.testHardwareAcceleration());
         document.getElementById('start-camera-test').addEventListener('click', () => this.startCameraTest());
         document.getElementById('start-microphone-test').addEventListener('click', () => this.startMicrophoneTest());
     }
@@ -1141,6 +1143,193 @@ class WebCodecsTestSuite {
         });
     }
 
+    async testHardwareAcceleration() {
+        this.updateButton('test-hardware-acceleration', 'Testing Hardware Acceleration...', true);
+        const resultsContainer = document.getElementById('hardware-acceleration-results');
+        resultsContainer.innerHTML = '';
+
+        try {
+            // Find supported video codecs to test with hardware acceleration
+            const supportedVideoCodecs = Object.entries(this.testResults.video)
+                .filter(([_, result]) => result.supported)
+                .slice(0, 3); // Test first 3 supported codecs
+
+            if (supportedVideoCodecs.length === 0) {
+                resultsContainer.innerHTML = '<p class="error">❌ No supported video codecs found. Run codec tests first.</p>';
+                return;
+            }
+
+            for (const [codecName, codecResult] of supportedVideoCodecs) {
+                await this.testCodecHardwareAcceleration(codecName, codecResult.codec, resultsContainer);
+            }
+
+        } catch (error) {
+            console.error('Hardware acceleration test failed:', error);
+            resultsContainer.innerHTML = `<p class="error">❌ Hardware acceleration test failed: ${error.message}</p>`;
+        } finally {
+            this.updateButton('test-hardware-acceleration', 'Test Hardware Acceleration', false);
+        }
+    }
+
+    async testCodecHardwareAcceleration(codecName, codec, container) {
+        const resultDiv = this.createResultDiv(`${codecName} Hardware Acceleration`, 'testing');
+        container.appendChild(resultDiv);
+
+        try {
+            // Test hardware acceleration preference
+            const hwResult = await this.testEncoderPerformance(codec, 'prefer-hardware');
+            const swResult = await this.testEncoderPerformance(codec, 'prefer-software');
+            const noPreferenceResult = await this.testEncoderPerformance(codec, 'no-preference');
+
+            const isHardwareAccelerated = hwResult.success && (hwResult.fps > swResult.fps * 1.2 || hwResult.encodingTime < swResult.encodingTime * 0.8);
+            const hardwareSupported = hwResult.success;
+            const softwareSupported = swResult.success;
+
+            this.testResults.hardwareAcceleration[codecName] = {
+                hardwareSupported,
+                softwareSupported,
+                isHardwareAccelerated,
+                hardwareFps: hwResult.fps,
+                softwareFps: swResult.fps,
+                hardwareTime: hwResult.encodingTime,
+                softwareTime: swResult.encodingTime,
+                codec: codec
+            };
+
+            let status = 'Unknown';
+            let statusClass = 'not-supported';
+            
+            if (isHardwareAccelerated) {
+                status = 'Hardware Accelerated';
+                statusClass = 'supported';
+            } else if (hardwareSupported && softwareSupported) {
+                status = 'Software Only';
+                statusClass = 'partial';
+            } else if (hardwareSupported || softwareSupported) {
+                status = 'Limited Support';
+                statusClass = 'partial';
+            }
+
+            this.updateResultDiv(resultDiv, `${codecName} Hardware Acceleration`, isHardwareAccelerated, {
+                'Status': status,
+                'Hardware FPS': hwResult.success ? `${hwResult.fps.toFixed(1)}` : 'Failed',
+                'Software FPS': swResult.success ? `${swResult.fps.toFixed(1)}` : 'Failed',
+                'Performance Gain': isHardwareAccelerated ? `${((hwResult.fps / swResult.fps - 1) * 100).toFixed(0)}%` : 'None',
+                'Hardware Support': hardwareSupported ? '✓' : '✗',
+                'Software Support': softwareSupported ? '✓' : '✗'
+            });
+
+            resultDiv.className = `codec-result ${statusClass}`;
+
+        } catch (error) {
+            console.error(`Hardware acceleration test failed for ${codecName}:`, error);
+            this.updateResultDiv(resultDiv, `${codecName} Hardware Acceleration`, false, {
+                error: error.message.substring(0, 100)
+            });
+        }
+    }
+
+    async testEncoderPerformance(codec, hardwareAcceleration) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+            
+            let encoder = null;
+            let frameCount = 0;
+            let startTime = 0;
+            let endTime = 0;
+            const maxFrames = 30;
+            
+            try {
+                const config = {
+                    codec: codec,
+                    width: canvas.width,
+                    height: canvas.height,
+                    bitrate: 2000000,
+                    framerate: 30,
+                    hardwareAcceleration: hardwareAcceleration
+                };
+
+                encoder = new VideoEncoder({
+                    output: (chunk) => {
+                        frameCount++;
+                        if (frameCount === 1) {
+                            startTime = performance.now();
+                        }
+                        
+                        if (frameCount >= maxFrames) {
+                            endTime = performance.now();
+                            const totalTime = endTime - startTime;
+                            const fps = (frameCount - 1) / (totalTime / 1000);
+                            
+                            encoder.close();
+                            resolve({
+                                success: true,
+                                fps: fps,
+                                encodingTime: totalTime,
+                                frameCount: frameCount
+                            });
+                        }
+                    },
+                    error: (error) => {
+                        console.error(`Encoding error (${hardwareAcceleration}):`, error);
+                        if (encoder) encoder.close();
+                        resolve({
+                            success: false,
+                            fps: 0,
+                            encodingTime: 0,
+                            error: error.message
+                        });
+                    }
+                });
+
+                encoder.configure(config);
+
+                // Generate and encode test frames
+                const encodeFrame = (frameIndex) => {
+                    if (frameIndex < maxFrames) {
+                        this.drawTestPattern(ctx, canvas.width, canvas.height, frameIndex);
+                        
+                        const frame = new VideoFrame(canvas, {
+                            timestamp: frameIndex * 33333
+                        });
+                        
+                        encoder.encode(frame, { keyFrame: frameIndex === 0 });
+                        frame.close();
+                        
+                        setTimeout(() => encodeFrame(frameIndex + 1), 10);
+                    }
+                };
+
+                encodeFrame(0);
+
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (encoder) {
+                        encoder.close();
+                        resolve({
+                            success: false,
+                            fps: 0,
+                            encodingTime: 0,
+                            error: 'Timeout'
+                        });
+                    }
+                }, 10000);
+
+            } catch (error) {
+                console.error(`Failed to create encoder (${hardwareAcceleration}):`, error);
+                resolve({
+                    success: false,
+                    fps: 0,
+                    encodingTime: 0,
+                    error: error.message
+                });
+            }
+        });
+    }
+
     drawTestPattern(ctx, width, height, frame = 0) {
         // Clear canvas
         ctx.fillStyle = '#000';
@@ -1205,6 +1394,22 @@ class WebCodecsTestSuite {
             html += '</div>';
         }
         
+        // Add hardware acceleration results if available
+        const hwAccelTotal = Object.keys(this.testResults.hardwareAcceleration).length;
+        if (hwAccelTotal > 0) {
+            const hwAccelSupported = Object.values(this.testResults.hardwareAcceleration).filter(r => r.isHardwareAccelerated).length;
+            html += `<p><strong>Hardware Acceleration:</strong> ${hwAccelSupported}/${hwAccelTotal} codecs accelerated</p>`;
+            html += '<div class="supported-codecs">';
+            Object.entries(this.testResults.hardwareAcceleration).forEach(([name, result]) => {
+                if (result.isHardwareAccelerated) {
+                    html += `<span class="codec-tag hw-accelerated">⚡ ${name}</span>`;
+                } else if (result.hardwareSupported || result.softwareSupported) {
+                    html += `<span class="codec-tag sw-only">🔧 ${name} (Software)</span>`;
+                }
+            });
+            html += '</div>';
+        }
+        
         // Add browser compatibility info
         html += `<p><strong>Browser:</strong> ${this.getBrowserInfo()}</p>`;
         
@@ -1238,6 +1443,20 @@ class WebCodecsTestSuite {
                 .codec-tag.supported {
                     background: #28a745;
                     color: white;
+                }
+                .codec-tag.hw-accelerated {
+                    background: #007bff;
+                    color: white;
+                    border: 2px solid #0056b3;
+                    animation: glow 2s ease-in-out infinite alternate;
+                }
+                .codec-tag.sw-only {
+                    background: #ffc107;
+                    color: #212529;
+                }
+                @keyframes glow {
+                    from { box-shadow: 0 0 5px #007bff; }
+                    to { box-shadow: 0 0 15px #0056b3; }
                 }
                 .component-status {
                     display: grid;

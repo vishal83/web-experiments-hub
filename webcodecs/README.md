@@ -43,7 +43,13 @@ This experiment provides a complete testing environment for the WebCodecs API, a
 - **Audio Encoding**: Live microphone stream encoding with bitrate monitoring
 - **Performance Metrics**: FPS, bitrate, chunk sizes, encoding efficiency
 
-### 4. Camera/Microphone Integration
+### 4. Hardware Acceleration Detection
+- **Performance Comparison**: Tests hardware vs software encoding performance
+- **Acceleration Status**: Detects if codecs are hardware-accelerated or software-only
+- **Real Performance Metrics**: Measures FPS differences and encoding times
+- **Hardware Support Matrix**: Shows which codecs support hardware acceleration
+
+### 5. Camera/Microphone Integration
 - **MediaStreamTrackProcessor**: Modern streaming approach (Chrome 94+)
 - **Canvas Fallback**: Web Audio API fallback for broader compatibility
 - **Live Statistics**: Real-time encoding performance and data rates
@@ -54,6 +60,11 @@ This experiment provides a complete testing environment for the WebCodecs API, a
 - **✅ Supported**: Codec fully supports both encoding and decoding
 - **❌ Not Supported**: Codec not available or configuration failed
 - **🔶 Testing**: Currently running codec capability tests
+
+### Hardware Acceleration Indicators
+- **⚡ Hardware Accelerated**: Codec uses GPU/hardware acceleration (blue with glow)
+- **🔧 Software Only**: Codec runs on CPU only (yellow)
+- **Performance Gain**: Percentage improvement when hardware acceleration is available
 
 ### Performance Metrics
 - **Encoding FPS**: Frames encoded per second
@@ -93,7 +104,8 @@ The test suite provides detailed error analysis:
 ### Key Features
 - **MediaStreamTrackProcessor**: Direct video frame processing (Chrome 94+)
 - **Web Audio API**: Audio stream processing with ScriptProcessor fallback
-- **Hardware Detection**: Automatic hardware vs software encoding detection
+- **Hardware Acceleration Detection**: Compares performance between hardware and software encoding
+- **Performance Benchmarking**: Measures FPS and encoding time differences
 - **Error Handling**: Comprehensive error classification and user feedback
 - **Resource Management**: Proper cleanup of encoders, decoders, and streams
 
@@ -123,7 +135,13 @@ The test suite provides detailed error analysis:
 3. Click "Test Microphone → WebCodecs" (grant microphone permission)  
 4. Watch live encoding statistics and performance data
 
-### 4. Roundtrip Validation
+### 4. Hardware Acceleration Detection
+1. Run codec support tests to identify available codecs
+2. Click "Test Hardware Acceleration" to compare hardware vs software performance
+3. Review results showing which codecs are hardware-accelerated
+4. Check performance gains and encoding speed improvements
+
+### 5. Roundtrip Validation
 1. Complete codec detection tests first
 2. Click "Test Video Roundtrip" for encode→decode testing
 3. Click "Test Audio Roundtrip" for audio pipeline validation
@@ -146,6 +164,12 @@ The test suite provides detailed error analysis:
 - Update graphics drivers (affects hardware encoding)
 - Try different codec configurations or bitrates
 - Some codecs require specific browser flags or settings
+
+**Hardware acceleration not working**
+- Update GPU drivers to latest version
+- Check if GPU supports hardware video encoding (Intel Quick Sync, NVIDIA NVENC, AMD VCE)
+- Some systems may not have hardware encoding capabilities
+- Integrated graphics may have limited codec support
 
 **Network testing issues**
 - Ensure firewall allows connections on server port
